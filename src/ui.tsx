@@ -32,7 +32,7 @@ function Plugin() {
     <Container space="medium">
       <VerticalSpace space="large" />
       <Text>
-        <Muted>Count</Muted>
+        <Muted>Count Alan</Muted>
       </Text>
       <VerticalSpace space="small" />
       <TextboxNumeric
