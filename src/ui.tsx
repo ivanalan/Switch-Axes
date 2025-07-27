@@ -1,54 +1,34 @@
 import {
   Button,
-  Columns,
   Container,
-  Muted,
   render,
-  Text,
-  TextboxNumeric,
   VerticalSpace
 } from '@create-figma-plugin/ui'
 import { emit } from '@create-figma-plugin/utilities'
 import { h } from 'preact'
-import { useCallback, useState } from 'preact/hooks'
+import { useCallback } from 'preact/hooks'
 
-import { CloseHandler, CreateRectanglesHandler } from './types'
+import { CloseHandler, SwitchAxisHandler } from './types'
 
 function Plugin() {
-  const [count, setCount] = useState<number | null>(5)
-  const [countString, setCountString] = useState('5')
-  const handleCreateRectanglesButtonClick = useCallback(
-    function () {
-      if (count !== null) {
-        emit<CreateRectanglesHandler>('CREATE_RECTANGLES', count)
-      }
-    },
-    [count]
-  )
+  const handleSwitchAxisButtonClick = useCallback(function () {
+    emit<SwitchAxisHandler>('SWITCH_AXIS')
+  }, [])
+  
   const handleCloseButtonClick = useCallback(function () {
     emit<CloseHandler>('CLOSE')
   }, [])
+  
   return (
     <Container space="medium">
       <VerticalSpace space="large" />
-      <Text>
-        <Muted>Count Alan</Muted>
-      </Text>
+      <Button fullWidth onClick={handleSwitchAxisButtonClick}>
+        Switch Axis
+      </Button>
       <VerticalSpace space="small" />
-      <TextboxNumeric
-        onNumericValueInput={setCount}
-        onValueInput={setCountString}
-        value={countString}
-      />
-      <VerticalSpace space="extraLarge" />
-      <Columns space="extraSmall">
-        <Button fullWidth onClick={handleCreateRectanglesButtonClick}>
-          Create
-        </Button>
-        <Button fullWidth onClick={handleCloseButtonClick} secondary>
-          Close
-        </Button>
-      </Columns>
+      <Button fullWidth onClick={handleCloseButtonClick} secondary>
+        Close
+      </Button>
       <VerticalSpace space="small" />
     </Container>
   )
