@@ -1,4 +1,4 @@
-# Preact Rectangles
+# Table Axis Switcher
 
 ## Development guide
 

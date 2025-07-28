@@ -103,7 +103,10 @@ export default function () {
       }
     }
     
-    figma.closePlugin('Table axis switched.')
+    // Rename the frame to "Table"
+    frame.name = "Table"
+    
+    figma.closePlugin('✅ Axis switched to ' + (isRowBased ? 'column' : 'row') + 's.')
   })
   
   once<CloseHandler>('CLOSE', function () {
