@@ -5,7 +5,40 @@ export default function () {
   once<SwitchAxisHandler>('SWITCH_AXIS', function () {
     // --- Step 1: Get Selection ---
     const selection = figma.currentPage.selection
-    const frame = selection[0] as FrameNode
+    
+    // Check if anything is selected
+    if (selection.length === 0) {
+      figma.closePlugin('❌ Please select a frame to switch axes.')
+      return
+    }
+    
+    // Check if more than one thing is selected
+    if (selection.length > 1) {
+      figma.closePlugin('❌ Please select only one frame to switch axes.')
+      return
+    }
+    
+    const selectedNode = selection[0]
+    
+    // Check if the selected node is a frame
+    if (selectedNode.type !== 'FRAME') {
+      figma.closePlugin('❌ Please select a frame to switch axes.')
+      return
+    }
+    
+    const frame = selectedNode as FrameNode
+    
+    // Check if the frame has auto layout enabled
+    if (frame.layoutMode === 'NONE') {
+      figma.closePlugin('❌ The selected frame must have auto layout enabled.')
+      return
+    }
+    
+    // Check if the frame has children
+    if (frame.children.length === 0) {
+      figma.closePlugin('❌ The selected frame must contain at least one child element.')
+      return
+    }
     
     // --- Step 2: Identify Structure ---
     const isRowBased = frame.layoutMode === 'VERTICAL'
@@ -37,6 +70,7 @@ export default function () {
             matrix[cellIndex] = [];
           }
           matrix[cellIndex][colIndex] = (column.children[cellIndex] as any).clone();
+          console.log("matrix")
         }
       }
     }
