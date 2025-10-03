@@ -18,7 +18,6 @@ function Plugin() {
   const handleCloseButtonClick = useCallback(function () {
     emit<CloseHandler>('CLOSE')
   }, [])
-  
   return (
     <Container space="medium">
       <VerticalSpace space="large" />
