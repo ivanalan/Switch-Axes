@@ -7,7 +7,7 @@ export default function () {
       const selectedFrame = validateSelection()
       const { matrix, maxCols, isRowBased } = buildCellMatrix(selectedFrame)
       reconstructTable(selectedFrame, matrix, maxCols, isRowBased)
-      
+      figma.viewport.scrollAndZoomIntoView([selectedFrame as BaseNode])
       figma.closePlugin('✅ Axis switched to ' + (isRowBased ? 'column' : 'row') + 's.')
     } catch (error) {
       figma.closePlugin(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -71,7 +71,7 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
         maxCols = currentRow.children.length
       }
       for (let cellIndex = 0; cellIndex < currentRow.children.length; cellIndex++) {
-        matrix[rowIndex][cellIndex] = (currentRow.children[cellIndex] as any).clone()
+        matrix[rowIndex][cellIndex] = (currentRow.children[cellIndex] as any)
       }
     }
   } else if (isColumnBased) {
@@ -83,7 +83,7 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
         if (!matrix[cellIndex]) {
           matrix[cellIndex] = []
         }
-        matrix[cellIndex][colIndex] = (column.children[cellIndex] as any).clone()
+        matrix[cellIndex][colIndex] = (column.children[cellIndex] as any)
       }
     }
   }
@@ -94,16 +94,17 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
 // --- Table Reconstruction ---
 function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], maxCols: number, isRowBased: boolean): void {
   // Clear the original Frame
-  selectedFrame.children.forEach(child => child.remove())
+  const newFrame = figma.createFrame();
 
   if (isRowBased) {
-    buildColumnBasedLayout(selectedFrame, matrix, maxCols)
+    buildColumnBasedLayout(newFrame, matrix, maxCols)
   } else {
-    buildRowBasedLayout(selectedFrame, matrix)
+    buildRowBasedLayout(newFrame, matrix)
   }
   
   // Rename the Frame to "Table"
-  selectedFrame.name = "Table"
+  newFrame.name = "Table"
+  replaceFrame(selectedFrame, newFrame)
 }
 
 function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][], maxCols: number): void {
@@ -117,9 +118,9 @@ function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[
     newColumn.name = `Column ${colIndex + 1}`
     newColumn.layoutMode = 'VERTICAL'
     newColumn.layoutSizingVertical = 'HUG'
-    newColumn.fills = [] // Make background transparent
+    newColumn.fills = [] // Make background transparent, otherwise sets to #FFFFFF by default
     
-    // Set column width to match the first cell in that column
+    // Set column width to match the first cell in that column, 
     if (matrix[0] && matrix[0][colIndex]) {
       newColumn.resize(matrix[0][colIndex].width, newColumn.height)
     }
@@ -135,6 +136,7 @@ function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[
         cell.layoutSizingHorizontal = 'FILL'
       }
     }
+    newColumn.expanded = false
     selectedFrame.appendChild(newColumn)
   }
 }
@@ -142,6 +144,9 @@ function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[
 function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]): void {
   // Switch to Row-based
   selectedFrame.layoutMode = 'VERTICAL'
+  selectedFrame.layoutSizingVertical = 'HUG'
+  selectedFrame.layoutAlign = 'STRETCH';
+  selectedFrame.layoutGrow = 1;
   
   for (let rowIndex = 0; rowIndex < matrix.length; rowIndex++) {
     const newRow = figma.createFrame()
@@ -160,6 +165,29 @@ function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]
       cell.layoutSizingHorizontal = matrix[rowIndex][colIndex].layoutSizingHorizontal
       cell.resize(matrix[rowIndex][colIndex].width, matrix[rowIndex][colIndex].height)
     }
+    newRow.expanded = false
     selectedFrame.appendChild(newRow)
+    newRow.layoutSizingHorizontal = 'FILL'
   }
+}
+
+// Basic replacement - preserving position and size
+function replaceFrame(oldFrame: FrameNode, newFrame: FrameNode) {
+  // Get the parent and the index of the old frame
+  const parent = oldFrame.parent;
+  if (!parent) throw new Error('Frame has no parent');
+  const index = parent.children.indexOf(oldFrame);
+  
+  // Copy position and size from old frame to new frame
+  newFrame.x = oldFrame.x;
+  newFrame.y = oldFrame.y;
+  newFrame.resize(oldFrame.width, oldFrame.height);
+  
+  // Insert new frame at the same position in the parent
+  parent.insertChild(index, newFrame);
+  
+  // Remove the old frame
+  oldFrame.remove();
+  
+  return newFrame;
 }
