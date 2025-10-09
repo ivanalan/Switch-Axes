@@ -95,6 +95,7 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
 function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], maxCols: number, isRowBased: boolean): void {
   // Clear the original Frame
   const newFrame = figma.createFrame();
+  newFrame.fills =[] // Make background transparent, otherwise sets to #FFFFFF by default
 
   if (isRowBased) {
     buildColumnBasedLayout(newFrame, matrix, maxCols)
