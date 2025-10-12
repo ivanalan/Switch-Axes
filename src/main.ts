@@ -32,7 +32,7 @@ function validateSelection(): FrameNode {
   const selection = figma.currentPage.selection
   
   if (selection.length === 0) {
-    throw new Error('Please select a frame to switch axes.')
+    throw new Error('Nothing selected. Select a frame to switch axes.')
   }
   
   if (selection.length > 1) {
@@ -41,7 +41,7 @@ function validateSelection(): FrameNode {
   
   const selectedNode = selection[0]
 
-  if (selectedNode.type === 'COMPONENT') {
+  if (selectedNode.type === 'INSTANCE' || selectedNode.type === 'COMPONENT') {
     throw new Error('Please detach the component instance first.')
   }
 
@@ -208,6 +208,9 @@ function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[
         cell.layoutSizingVertical = matrix[rowIndex][colIndex].layoutSizingVertical
         cell.resize(matrix[rowIndex][colIndex].width, matrix[rowIndex][colIndex].height)
         cell.layoutSizingHorizontal = 'FILL'
+
+        //weird issue when a cell height is fill in a row because the new container doesnt make sense in this context
+        cell.layoutSizingVertical = 'FIXED'
         cell.visible = matrix[rowIndex][colIndex].visible
       }
     }
@@ -240,9 +243,10 @@ function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]
       cell.visible = matrix[rowIndex][colIndex].visible
       newRow.appendChild(cell)
       
-      // Explicitly set layout properties after append to prevent auto-adjustment (FIGMA QUIRK)
-      cell.layoutSizingVertical = matrix[rowIndex][colIndex].layoutSizingVertical
-      cell.layoutSizingHorizontal = matrix[rowIndex][colIndex].layoutSizingHorizontal
+
+      //if the column width is fill and the cell width is fill (todo), then set to fill otherwise:
+      cell.layoutSizingHorizontal = 'FIXED'
+      cell.layoutSizingVertical = 'FIXED'
       cell.resize(matrix[rowIndex][colIndex].width, matrix[rowIndex][colIndex].height)
     }
     newRow.expanded = false
