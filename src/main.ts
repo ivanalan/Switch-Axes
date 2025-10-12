@@ -6,6 +6,7 @@ export default function () {
     try {
       const selectedFrame = validateSelection()
       const { matrix, maxCols, isRowBased } = buildCellMatrix(selectedFrame)
+      validateMatrix(matrix, maxCols, isRowBased)
       reconstructTable(selectedFrame, matrix, maxCols, isRowBased)
       figma.viewport.scrollAndZoomIntoView([selectedFrame as BaseNode])
       figma.closePlugin('✅ Axis switched to ' + (isRowBased ? 'column' : 'row') + 's.')
@@ -72,6 +73,10 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
       }
       for (let cellIndex = 0; cellIndex < currentRow.children.length; cellIndex++) {
         matrix[rowIndex][cellIndex] = (currentRow.children[cellIndex] as any)
+        // cheap way that modifies each cell in a hidden column to hidden even though it could be technically visible in the layer. Could be resolved in other ways
+        if (!currentRow.visible) {
+          matrix[rowIndex][cellIndex].visible = false
+        }
       }
     }
   } else if (isColumnBased) {
@@ -84,6 +89,10 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
           matrix[cellIndex] = []
         }
         matrix[cellIndex][colIndex] = (column.children[cellIndex] as any)
+        // cheap way that modifies each cell in a hidden column to hidden even though it could be technically visible in the layer. Could be resolved in other ways
+        if (!column.visible) {
+          matrix[cellIndex][colIndex].visible = false
+        }
       }
     }
   }
@@ -91,11 +100,44 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
   return { matrix, maxCols, isRowBased }
 }
 
+// --- Matrix Validation ---
+function validateMatrix(matrix: ComponentNode[][], maxCols: number, isRowBased: boolean): void {
+  if (!matrix || matrix.length === 0) {
+    throw new Error('Matrix is empty or undefined.')
+  }
+
+  // Check for missing cells in the matrix
+  const missingCells: string[] = []
+  
+  for (let rowIndex = 0; rowIndex < matrix.length; rowIndex++) {
+    const row = matrix[rowIndex]
+    if (!row) {
+      missingCells.push(`Row ${rowIndex + 1} is completely missing`)
+      continue
+    }
+    
+    for (let colIndex = 0; colIndex < maxCols; colIndex++) {
+      if (!row[colIndex]) {
+        missingCells.push(`(${rowIndex + 1}, ${colIndex + 1})`)
+      }
+    }
+  }
+
+  if (missingCells.length > 0) {
+    const layoutType = isRowBased ? 'row' : 'column'
+    throw new Error(
+      `Invalid table structure: each ${layoutType} must have the same number of cells.` + `    `+ `Missing cells:\n` +
+      missingCells.slice(0, 5).join('\n') + 
+      (missingCells.length > 5 ? `\n... and ${missingCells.length - 5} more missing cells` : '')
+    )
+  }
+}
+
 // --- Table Reconstruction ---
 function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], maxCols: number, isRowBased: boolean): void {
   // Clear the original Frame
   const newFrame = figma.createFrame();
-  newFrame.fills =[] // Make background transparent, otherwise sets to #FFFFFF by default
+  newFrame.fills = selectedFrame.fills // Preserve the original background color
 
   if (isRowBased) {
     buildColumnBasedLayout(newFrame, matrix, maxCols)
@@ -135,10 +177,15 @@ function buildColumnBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[
         cell.layoutSizingVertical = matrix[rowIndex][colIndex].layoutSizingVertical
         cell.resize(matrix[rowIndex][colIndex].width, matrix[rowIndex][colIndex].height)
         cell.layoutSizingHorizontal = 'FILL'
+        cell.visible = matrix[rowIndex][colIndex].visible
       }
     }
     newColumn.expanded = false
+    // Check to see if all child cells in the newColumn are hidden
+    newColumn.visible = !(newColumn.children.every(child => !child.visible))
+    
     selectedFrame.appendChild(newColumn)
+
   }
 }
 
@@ -159,6 +206,7 @@ function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]
     for (let colIndex = 0; colIndex < (matrix[rowIndex]?.length || 0); colIndex++) {
       // Clone the cell to prevent auto-adjustment and erroneous self references
       const cell = matrix[rowIndex][colIndex].clone()
+      cell.visible = matrix[rowIndex][colIndex].visible
       newRow.appendChild(cell)
       
       // Explicitly set layout properties after append to prevent auto-adjustment (FIGMA QUIRK)
@@ -167,6 +215,10 @@ function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]
       cell.resize(matrix[rowIndex][colIndex].width, matrix[rowIndex][colIndex].height)
     }
     newRow.expanded = false
+    // Check to see if all child cells in the newRow are hidden
+    newRow.visible = !(newRow.children.every(child => !child.visible))
+
+
     selectedFrame.appendChild(newRow)
     newRow.layoutSizingHorizontal = 'FILL'
   }
