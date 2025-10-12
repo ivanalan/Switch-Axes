@@ -1,14 +1,16 @@
 import { once, showUI } from '@create-figma-plugin/utilities'
 import { CloseHandler, SwitchAxisHandler } from './types'
 
+const absoluteChildren: BaseNode[] = []
+
 export default function () {
+
   once<SwitchAxisHandler>('SWITCH_AXIS', function () {
     try {
       const selectedFrame = validateSelection()
       const { matrix, maxCols, isRowBased } = buildCellMatrix(selectedFrame)
       validateMatrix(matrix, maxCols, isRowBased)
       reconstructTable(selectedFrame, matrix, maxCols, isRowBased)
-      figma.viewport.scrollAndZoomIntoView([selectedFrame as BaseNode])
       figma.closePlugin('✅ Axis switched to ' + (isRowBased ? 'column' : 'row') + 's.')
     } catch (error) {
       figma.closePlugin(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -38,7 +40,11 @@ function validateSelection(): FrameNode {
   }
   
   const selectedNode = selection[0]
-  
+
+  if (selectedNode.type === 'COMPONENT') {
+    throw new Error('Please detach the component instance first.')
+  }
+
   if (selectedNode.type !== 'FRAME') {
     throw new Error('Please select a frame to switch axes.')
   }
@@ -63,6 +69,15 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
   const matrix: ComponentNode[][] = []
   let maxCols = 0
 
+  // Check each child for absolute positioning, and clean up matrix
+  selectedFrame.children.forEach(child => {
+    if ((child as any).layoutPositioning == 'ABSOLUTE') {
+      absoluteChildren.push((child as any).clone())
+      child.remove()
+    }
+  })
+  
+  
   if (isRowBased) {
     const rows = selectedFrame.children as FrameNode[]
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
@@ -73,26 +88,32 @@ function buildCellMatrix(selectedFrame: FrameNode): { matrix: ComponentNode[][],
       }
       for (let cellIndex = 0; cellIndex < currentRow.children.length; cellIndex++) {
         matrix[rowIndex][cellIndex] = (currentRow.children[cellIndex] as any)
+ 
         // cheap way that modifies each cell in a hidden column to hidden even though it could be technically visible in the layer. Could be resolved in other ways
         if (!currentRow.visible) {
           matrix[rowIndex][cellIndex].visible = false
         }
+        
       }
     }
   } else if (isColumnBased) {
     const columns = selectedFrame.children as FrameNode[]
     maxCols = columns.length
+
     for (let colIndex = 0; colIndex < columns.length; colIndex++) {
       const column = columns[colIndex]
+
       for (let cellIndex = 0; cellIndex < column.children.length; cellIndex++) {
         if (!matrix[cellIndex]) {
           matrix[cellIndex] = []
         }
+
         matrix[cellIndex][colIndex] = (column.children[cellIndex] as any)
         // cheap way that modifies each cell in a hidden column to hidden even though it could be technically visible in the layer. Could be resolved in other ways
         if (!column.visible) {
           matrix[cellIndex][colIndex].visible = false
         }
+        
       }
     }
   }
@@ -144,6 +165,16 @@ function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], m
   } else {
     buildRowBasedLayout(newFrame, matrix)
   }
+  
+  // Re-insert absolute positioned items
+  absoluteChildren.forEach(item => {
+    const clonedItem = (item as any).clone()
+    newFrame.appendChild(clonedItem)
+    // Preserve absolute positioning
+    if ((clonedItem as any).layoutPositioning) {
+      (clonedItem as any).layoutPositioning = 'ABSOLUTE'
+    }
+  })
   
   // Rename the Frame to "Table"
   newFrame.name = "Table"
