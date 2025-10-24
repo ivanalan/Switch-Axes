@@ -174,6 +174,7 @@ function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], m
     if ((clonedItem as any).layoutPositioning) {
       (clonedItem as any).layoutPositioning = 'ABSOLUTE'
     }
+    item.remove()
   })
   
   // Rename the Frame to "Table"
