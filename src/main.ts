@@ -158,7 +158,6 @@ function validateMatrix(matrix: ComponentNode[][], maxCols: number, isRowBased: 
 function reconstructTable(selectedFrame: FrameNode, matrix: ComponentNode[][], maxCols: number, isRowBased: boolean): void {
   // Clear the original Frame
   const newFrame = figma.createFrame();
-  newFrame.fills = selectedFrame.fills // Preserve the original background color
 
   if (isRowBased) {
     buildColumnBasedLayout(newFrame, matrix, maxCols)
@@ -260,7 +259,7 @@ function buildRowBasedLayout(selectedFrame: FrameNode, matrix: ComponentNode[][]
   }
 }
 
-// Basic replacement - preserving position and size
+// Enhanced replacement - preserving all frame properties including constraints and layout
 function replaceFrame(oldFrame: FrameNode, newFrame: FrameNode) {
   // Get the parent and the index of the old frame
   const parent = oldFrame.parent;
@@ -271,6 +270,41 @@ function replaceFrame(oldFrame: FrameNode, newFrame: FrameNode) {
   newFrame.x = oldFrame.x;
   newFrame.y = oldFrame.y;
   newFrame.resize(oldFrame.width, oldFrame.height);
+  
+  // Copy constraints (Center, Center positioning)
+  newFrame.constraints = oldFrame.constraints;
+  
+  // Copy layout properties
+  newFrame.layoutAlign = oldFrame.layoutAlign;
+  newFrame.layoutGrow = oldFrame.layoutGrow;
+  newFrame.layoutSizingHorizontal = oldFrame.layoutSizingHorizontal;
+  newFrame.layoutSizingVertical = oldFrame.layoutSizingVertical;
+  
+  // Copy other important properties
+  newFrame.primaryAxisAlignItems = oldFrame.primaryAxisAlignItems;
+  newFrame.counterAxisAlignItems = oldFrame.counterAxisAlignItems;
+  newFrame.primaryAxisSizingMode = oldFrame.primaryAxisSizingMode;
+  newFrame.counterAxisSizingMode = oldFrame.counterAxisSizingMode;
+  newFrame.paddingTop = oldFrame.paddingTop;
+  newFrame.paddingRight = oldFrame.paddingRight;
+  newFrame.paddingBottom = oldFrame.paddingBottom;
+  newFrame.paddingLeft = oldFrame.paddingLeft;
+  newFrame.itemSpacing = oldFrame.itemSpacing;
+  
+  // Copy visual properties
+  newFrame.fills = oldFrame.fills;
+  newFrame.strokes = oldFrame.strokes;
+  newFrame.strokeWeight = oldFrame.strokeWeight;
+  newFrame.strokeAlign = oldFrame.strokeAlign;
+  newFrame.cornerRadius = oldFrame.cornerRadius;
+  newFrame.effects = oldFrame.effects;
+  newFrame.opacity = oldFrame.opacity;
+  newFrame.blendMode = oldFrame.blendMode;
+  newFrame.isMask = oldFrame.isMask;
+  
+  // Copy visibility and lock state
+  newFrame.visible = oldFrame.visible;
+  newFrame.locked = oldFrame.locked;
   
   // Insert new frame at the same position in the parent
   parent.insertChild(index, newFrame);
